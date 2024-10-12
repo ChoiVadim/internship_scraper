@@ -61,7 +61,6 @@ jobs:
       - name: Deploy to EC2
         run: |
           ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.AWS_EC2_IP }} << 'EOF'
-            sudo docker pull ${{ secrets.DOCKER_USERNAME }}/telegram_bot
             CONTAINER_NAME="telegram_bot"
             # Check if the container is running and stop/remove it if it exists
             if [ "$(sudo docker ps -q -f name=$CONTAINER_NAME)" ]; then
@@ -69,8 +68,16 @@ jobs:
               sudo docker stop $CONTAINER_NAME
               sudo docker rm $CONTAINER_NAME
             fi
-            
+
+            IMAGE_NAME="${{ secrets.DOCKER_USERNAME }}/telegram_bot"
+            # Remove old image
+            if [ "$(sudo docker images -q $IMAGE_NAME)" ]; then
+              echo "Removing old image..."
+              sudo docker rmi -f $IMAGE_NAME || echo "No such image to remove."
+            fi    
+                   
             # Run the new container
             echo "Starting the new container..."
+            sudo docker pull ${{ secrets.DOCKER_USERNAME }}/telegram_bot
             sudo docker run -d --name $CONTAINER_NAME -p 8080:80 -e BOT_TOKEN=${{ secrets.BOT_TOKEN }} ${{ secrets.DOCKER_USERNAME }}/telegram_bot
           EOF
