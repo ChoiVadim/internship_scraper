@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  bot:
+    build: .
+    container_name: telegram_bot
+    environment:
+      - REDIS_HOST=redis  # Use the service name 'redis' to connect
+    volumes:
+      - .:/telegram_bot
+    depends_on:
+      - redis
+    networks:
+      - bot-network
+
+  redis:
+    image: redis:7.0
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - bot-network
+
+networks:
+  bot-network:
+    driver: bridge

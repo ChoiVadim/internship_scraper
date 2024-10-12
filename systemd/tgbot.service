@@ -3,9 +3,8 @@ After=network.target
 Description=Template Bot
 
 [Service]
-Type=simple
-WorkingDirectory=/root/folder/
-ExecStart=/usr/bin/python3 bot.py
+WorkingDirectory=/home/ubuntu/telegram_bot
+ExecStart=/bit/bash -c 'source .venv/bin/activate && python3 bot.py'
 Restart=always
 
 [Install]

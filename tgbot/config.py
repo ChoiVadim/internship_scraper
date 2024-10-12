@@ -1,3 +1,7 @@
-# any configuration should be stored here
+from os import getenv
 
-TOKEN = 'TOKEN' # configure env if you need;
+from dotenv import load_dotenv
+
+load_dotenv()
+
+TOKEN = getenv("BOT_TOKEN")

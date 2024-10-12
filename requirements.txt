@@ -1,2 +1,6 @@
-aiohttp
-aioredis
+redis
+pytelegrambotapi
+python-dotenv
+requests
+beautifulsoup4
+schedule
