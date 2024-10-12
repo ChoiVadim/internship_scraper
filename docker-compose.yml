@@ -6,6 +6,7 @@ services:
     container_name: telegram_bot
     environment:
       - REDIS_HOST=redis  # Use the service name 'redis' to connect
+      - TOKEN_BOT=${TOKEN_BOT}  # Pass bot token via environment variable
     volumes:
       - .:/telegram_bot
     depends_on:

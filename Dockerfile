@@ -9,8 +9,5 @@ RUN pip install -r requirements.txt
 # Copy the rest of the application code
 COPY . .
 
-# Copy the .env file to the working directory
-COPY .env .env
-
 # Set the command to run your application
 CMD ["python", "bot.py"]
