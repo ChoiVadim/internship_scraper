@@ -61,7 +61,10 @@ jobs:
       - name: Deploy to EC2
         run: |
           ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.AWS_EC2_IP }} << 'EOF'
-            sudo docker pull ${{ secrets.DOCKER_USERNAME }}/telegram_bot
-            sudo docker-compose down
-            sudo docker-compose up -d --build
+            # Stop and remove existing container if necessary
+            sudo docker stop telegram_bot || true
+            sudo docker rm telegram_bot || true
+            
+            # Run the new container
+            sudo docker run -d -p 8080:80 -e TOKEN_BOT=${{ secrets.TOKEN_BOT }} choivadim/telegram_bot
           EOF
