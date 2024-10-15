@@ -33,8 +33,9 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          pip install coverage pytest-xdist
-          coverage run -m pytest -n auto --maxfail=1 --disable-warnings
+          pip install coverage pytest-cov pytest-xdist
+          coverage erase  # Clean previous coverage data
+          pytest --cov=your_module_name -n auto --maxfail=1 --disable-warnings
           coverage report
 
       - name: Set up Docker
