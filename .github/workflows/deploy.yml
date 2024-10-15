@@ -81,7 +81,7 @@ jobs:
             
             # Variables
             CONTAINER_NAME="telegram_bot"
-            IMAGE_NAME="${{ secrets.DOCKER_USERNAME }}/telegram_bot"
+            IMAGE_NAME="${{ secrets.DOCKER_USERNAME }}/telegram_bot:latest"
             BOT_TOKEN="${{ secrets.BOT_TOKEN }}"
             
             echo "Deploying container: $CONTAINER_NAME"
