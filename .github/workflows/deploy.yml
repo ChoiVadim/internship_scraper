@@ -31,12 +31,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run tests with coverage
-        run: |
-          pip install coverage pytest-cov pytest-xdist
-          coverage erase  # Clean previous coverage data
-          pytest --cov=your_module_name -n auto --maxfail=1 --disable-warnings
-          coverage report
+      - name: Run tests
+        run: pytest --maxfail=1 --disable-warnings
 
       - name: Set up Docker
         uses: docker/setup-buildx-action@v1
