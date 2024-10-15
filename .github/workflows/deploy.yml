@@ -16,15 +16,26 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.x"
+          python-version: "3.10"
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run tests
-        run: pytest --maxfail=1 --disable-warnings
+      - name: Run tests with coverage
+        run: |
+          pip install coverage pytest-xdist
+          coverage run -m pytest -n auto --maxfail=1 --disable-warnings
+          coverage report
 
       - name: Set up Docker
         uses: docker/setup-buildx-action@v1
@@ -35,10 +46,19 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
+      - name: Cache Docker layers
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
       - name: Build and push Docker image
         run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/telegram_bot .
-          docker push ${{ secrets.DOCKER_USERNAME }}/telegram_bot
+          IMAGE_NAME="${{ secrets.DOCKER_USERNAME }}/telegram_bot:${{ github.sha }}"
+          docker build --cache-from=type=local,src=/tmp/.buildx-cache -t $IMAGE_NAME .
+          docker push $IMAGE_NAME
 
   deploy:
     runs-on: ubuntu-latest
@@ -47,9 +67,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-
-      - name: Install SSH client
-        run: sudo apt-get install -y openssh-client
 
       - name: Add SSH key
         run: |
@@ -60,24 +77,52 @@ jobs:
 
       - name: Deploy to EC2
         run: |
-          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.AWS_EC2_IP }} << 'EOF'
+          set -e  # Exit on error
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ubuntu@${{ secrets.AWS_EC2_IP }} << 'EOF'
+            set -e  # Exit on error inside the EC2 script
+            
+            # Variables
             CONTAINER_NAME="telegram_bot"
+            IMAGE_NAME="${{ secrets.DOCKER_USERNAME }}/telegram_bot"
+            BOT_TOKEN="${{ secrets.BOT_TOKEN }}"
+            
+            echo "Deploying container: $CONTAINER_NAME"
+            
             # Check if the container is running and stop/remove it if it exists
             if [ "$(sudo docker ps -q -f name=$CONTAINER_NAME)" ]; then
               echo "Stopping and removing the existing container..."
               sudo docker stop $CONTAINER_NAME
               sudo docker rm $CONTAINER_NAME
             fi
-
-            IMAGE_NAME="${{ secrets.DOCKER_USERNAME }}/telegram_bot"
-            # Remove old image
+            
+            # Remove old image if it exists
             if [ "$(sudo docker images -q $IMAGE_NAME)" ]; then
               echo "Removing old image..."
               sudo docker rmi -f $IMAGE_NAME || echo "No such image to remove."
-            fi    
-                   
-            # Run the new container
+            fi
+
+            # Pull new image
+            echo "Pulling new image..."
+            sudo docker pull $IMAGE_NAME
+            
+            # Run the new container with error handling
             echo "Starting the new container..."
-            sudo docker pull ${{ secrets.DOCKER_USERNAME }}/telegram_bot
-            sudo docker run -d --name $CONTAINER_NAME -p 8080:80 -e BOT_TOKEN=${{ secrets.BOT_TOKEN }} ${{ secrets.DOCKER_USERNAME }}/telegram_bot
+            sudo docker run -d --name $CONTAINER_NAME -p 8080:80 \
+              -e BOT_TOKEN=$BOT_TOKEN $IMAGE_NAME
+            
+            # Verify that the container is running
+            if [ "$(sudo docker ps -q -f name=$CONTAINER_NAME)" ]; then
+              echo "Container $CONTAINER_NAME is up and running!"
+            else
+              echo "Failed to start the container!" >&2
+              exit 1
+            fi
           EOF
+
+      - name: Notify Success
+        if: success()
+        run: echo "Deployment to EC2 successful!"
+
+      - name: Notify Failure
+        if: failure()
+        run: echo "Deployment to EC2 failed!" >&2
