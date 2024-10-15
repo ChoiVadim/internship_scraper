@@ -51,10 +51,11 @@ jobs:
       #     restore-keys: |
       #       ${{ runner.os }}-buildx-
 
+      # docker build --cache-from=type=local,src=/tmp/.buildx-cache -t $IMAGE_NAME .
       - name: Build and push Docker image
         run: |
           IMAGE_NAME="${{ secrets.DOCKER_USERNAME }}/telegram_bot:${{ github.sha }}"
-          docker build --cache-from=type=local,src=/tmp/.buildx-cache -t $IMAGE_NAME .
+          docker build -t $IMAGE_NAME .
           docker push $IMAGE_NAME
 
   deploy:
